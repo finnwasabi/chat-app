@@ -40,9 +40,15 @@
       border: none;
       padding: 0 1rem;
       margin: 0.25rem;
-      border-radius: 3px;
+      border-radius: 2rem;
       outline: none;
       color: #fff;
+
+      &:hover {
+        background: #006aff;
+        cursor: pointer;
+        transition: all linear 0.3s;
+      }
     }
 
     #messages {
@@ -50,44 +56,94 @@
       margin: 0;
       padding: 0;
     }
-
-    #messages>li {
-      padding: 0.5rem 1rem;
-    }
-
-    #messages>li:nth-child(odd) {
-      background: #efefef;
-    }
   </style>
 </head>
 
 <body>
   <ul id="messages"></ul>
   <form id="form" action="">
-    <input id="input" autocomplete="off" /><button>Send</button>
+    <input id="input" autocomplete="off" />
+    <button>Send</button>
   </form>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    var socket = io();
+    const socket = io();
+    let name = '';
 
-    var messages = document.getElementById('messages');
-    var form = document.getElementById('form');
-    var input = document.getElementById('input');
+    const promptName = () => {
+      name = window.prompt('Enter your name:');
+      if (name) {
+        document.getElementById('input').placeholder = 'Type your message...';
+      } else {
+        promptName();
+      }
+    };
+
+    promptName();
+
+    socket.emit('new-user', name);
+
+    const messages = document.getElementById('messages');
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (input.value) {
-        socket.emit('chat message', input.value);
+        socket.emit('chat message', { name, message: input.value });
         input.value = '';
       }
     });
 
-    socket.on('chat message', function (msg) {
-      var item = document.createElement('li');
-      item.textContent = msg;
+    socket.on('chat message', function (data) {
+      const item = document.createElement('li');
+      item.style.listStyleType = 'none';
+      item.style.padding = '0.5rem 1rem';
+      item.style.backgroundColor = data.name === name ? '#006aff' : '#f0f0f0';
+      item.style.color = data.name === name ? '#fff' : '#333';
+      item.style.borderRadius = '2rem';
+      item.style.margin = data.name === name ? '0.5rem 0.5rem 0.5rem auto' : '0.5rem';
+      item.style.wordWrap = 'break-word';
+      item.style.maxWidth = 'fit-content';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.style.fontWeight = 'bold';
+      nameSpan.textContent = data.name === name ? '' : `${data.name}: `;
+      item.appendChild(nameSpan);
+
+      const messageText = document.createTextNode(data.message);
+      item.appendChild(messageText);
+
       messages.appendChild(item);
       window.scrollTo(0, document.body.scrollHeight);
     });
+
+    socket.on('user-connected', name => {
+      const item = document.createElement('li');
+      item.style.listStyleType = 'none';
+      item.style.textAlign = 'center';
+      item.style.color = '#333';
+      item.style.padding = '0.5rem 1rem';
+      item.style.margin = '0.5rem';
+      item.textContent = `${name} has joined the chat.`;
+
+      messages.appendChild(item);
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    socket.on('user-disconnected', name => {
+      const item = document.createElement('li');
+      item.style.listStyleType = 'none';
+      item.style.textAlign = 'center';
+      item.style.color = '#333';
+      item.style.padding = '0.5rem 1rem';
+      item.style.margin = '0.5rem';
+      item.textContent = `${name} has left the chat.`;
+
+      messages.appendChild(item);
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+  </script>
   </script>
 </body>
 

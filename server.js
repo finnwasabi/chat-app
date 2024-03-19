@@ -2,24 +2,36 @@ const express = require('express');
 const app = express();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
+const path = require('path');
+const users = {};
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 io.on('connection', (socket) => {
-  console.log('a user connected');
+  socket.on('new-user', name => {
+    users[socket.id] = name;
+    io.emit('user-connected', name);
+    console.log(`${name} has joined the chat.`);
+  })
 
-  socket.on('chat message', (msg) => {
-    console.log('message: ' + msg);
-    io.emit('chat message', msg);
+  socket.on('chat message', (data) => {
+    console.log(`Received message from ${data.name}: ${data.message}`);
+    io.emit('chat message', data);
   });
 
   socket.on('disconnect', () => {
-    console.log('user disconnected');
+    const disconnectedUserName = users[socket.id];
+    delete users[socket.id];
+    io.emit('user-disconnected', disconnectedUserName);
+    console.log(`${disconnectedUserName} has left the chat.`);
   });
 });
 
-http.listen(3000, () => {
-  console.log('http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
